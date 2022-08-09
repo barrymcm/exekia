@@ -2,43 +2,69 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Carbon\Carbon;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\View\Factory;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
-class User extends Authenticatable
+class User extends Model
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
+        'id', 'first_name', 'last_name', 'dob', 'contact_number', 'profession'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $dates = ['created_at', 'updated_at'];
+
+    final public function rate(): HasOne
+    {
+        return $this->hasOne(Rate::class);
+    }
 
     /**
-     * The attributes that should be cast.
+     * @note : I'd normally create a UserRepository and put this
+     *          method in there instead of the model, but im not going
+     *          to hook up a repository service for the sake of saving time.
      *
-     * @var array<string, string>
+     * @param  array  $attributes
+     * @return string|Application|Factory|View
      */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-    ];
+    public static function saveUser(array $attributes): User|string
+    {
+        try {
+            DB::beginTransaction();
+
+            $user = new User;
+            $user->first_name = $attributes['first_name'];
+            $user->last_name = $attributes['last_name'];
+            $user->dob = $attributes['dob'];
+            $user->contact_number = $attributes['contact_number'];
+            $user->profession = $attributes['profession'];
+            $user->created_at = Carbon::createFromFormat('Y-m-d H:i:s', now());
+            $user->save();
+
+            $rate = new Rate;
+
+            $rate->user_id = $user->id;
+            $rate->hourly = $attributes['rate'];
+            $rate->currency_id = $attributes['currency'];
+            $rate->created_at = Carbon::createFromFormat('Y-m-d H:i:s', now());
+            $rate->save();
+
+            DB::commit();
+
+            return $user;
+
+        } catch (ModelNotFoundException $e) {
+            DB::rollBack();
+
+            return $e->getMessage();
+        }
+    }
 }

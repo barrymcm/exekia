@@ -17,10 +17,6 @@ return new class extends Migration
             $table->id();
             $table->timestamps();
             $table->decimal('hourly')->nullable();
-            $table->decimal('daily')->nullable();
-            $table->decimal('weekly')->nullable();
-            $table->decimal('monthly')->nullable();
-            $table->decimal('yearly')->nullable();
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('currency_id')->constrained('currencies');
         });
