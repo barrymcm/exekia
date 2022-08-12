@@ -18,7 +18,6 @@
         <h4 class="mb-3">Create new user</h4>
         <form action="{{ route('user.store') }}" method="POST">
             @csrf
-{{--            <input type="hidden" id="user_id" name="user_id" value="{{ $user }}">--}}
             <label for="first_name">First Name</label>
             <input class="form-control" type="text" name="first_name" value="">
             <label for="last_name">Last Name</label>

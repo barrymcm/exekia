@@ -2,17 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\CurrencyConversionInterface;
 use App\Http\Requests\StoreUserRequest;
 use App\Models\Currency;
 use App\Models\User;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 
 class UserController extends Controller
 {
+    private CurrencyConversionInterface $converter;
+
+    public function __construct(CurrencyConversionInterface $converter)
+    {
+        $this->converter = $converter;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -21,8 +29,9 @@ class UserController extends Controller
     public function index()
     {
         $users = User::all();
+        $currencies = Currency::all();
 
-        return view('user', ['users' => $users]);
+        return view('user', [ 'users' => $users, 'currencies' => $currencies ]);
     }
 
     /**
@@ -78,36 +87,30 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return Response
+     * @param $user
+     * @param $currency
+     * @return JsonResponse
      */
-    public function edit($id)
+    final public function showRateByCurrency(string $id, string $currency): JsonResponse
     {
-        //
-    }
+        $user = User::where('id', $id)->first();
+        $usersCurrency = Currency::where('id', $user->rate->currency_id)->first()->currency;
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return Response
-     */
-    public function destroy($id)
-    {
-        //
+        /**
+         * @todo : use a Resource here to format the json output
+         */
+        return response()->json(
+            [
+                'User' => [
+                    'first_name' => $user->first_name,
+                    'last_name' => $user->last_name,
+                    'contact_number' => $user->contact_number,
+                    'Rate' => [
+                        'currency' => $currency,
+                        'hourly_rate' => $this->converter->convertHourlyRateToCurrency($user->rate->hourly, $usersCurrency, $currency),
+                    ]
+                ]
+            ]
+        );
     }
 }
