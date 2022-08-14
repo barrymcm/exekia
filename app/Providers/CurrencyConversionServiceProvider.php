@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Contracts\CurrencyConversionInterface;
-use App\Models\ExchangeRate;
 use App\Services\ExternalCurrencyConversionService;
 use App\Services\LocalCurrencyConvertionService;
 use Illuminate\Support\ServiceProvider;

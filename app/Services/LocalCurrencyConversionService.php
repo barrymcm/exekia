@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Contracts\CurrencyConversionInterface;
 use App\Models\ExchangeRate;
 
-class LocalCurrencyConvertionService implements CurrencyConversionInterface
+class LocalCurrencyConversionService implements CurrencyConversionInterface
 {
     public function convertHourlyRateToCurrency(
         float $hourlyRate,
