@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\CurrencyConversionInterface;
 use App\Services\ExternalCurrencyConversionService;
-use App\Services\LocalCurrencyConvertionService;
+use App\Services\LocalCurrencyConversionService;
 use Illuminate\Support\ServiceProvider;
 
 class CurrencyConversionServiceProvider extends ServiceProvider
@@ -17,7 +17,7 @@ class CurrencyConversionServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind( CurrencyConversionInterface::class, function () {
-            return new LocalCurrencyConvertionService();
+            return new LocalCurrencyConversionService();
         });
 
         $this->app->bind(CurrencyConversionInterface::class, function () {
