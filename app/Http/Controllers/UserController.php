@@ -6,19 +6,34 @@ use App\Contracts\CurrencyConversionInterface;
 use App\Http\Requests\StoreUserRequest;
 use App\Models\Currency;
 use App\Models\User;
+use App\Services\ExternalCurrencyConversionService;
+use App\Services\LocalCurrencyConversionService;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
+use Psr\Log\LoggerInterface;
 
 class UserController extends Controller
 {
-    private CurrencyConversionInterface $converter;
+    private LoggerInterface $logger;
+    private CurrencyConversionInterface $currencyConversionService;
 
-    public function __construct(CurrencyConversionInterface $converter)
+    public function __construct(
+        ExternalCurrencyConversionService $externalCurrencyConversionService,
+        LocalCurrencyConversionService $localCurrencyConversionService,
+        LoggerInterface $logger
+    )
     {
-        $this->converter = $converter;
+        if (env('EXTERNAL_CONVERSION_API')) {
+            $this->currencyConversionService = $externalCurrencyConversionService;
+        } else {
+            $this->currencyConversionService = $localCurrencyConversionService;
+        }
+
+        $this->logger = $logger;
     }
 
     /**
@@ -87,8 +102,8 @@ class UserController extends Controller
     }
 
     /**
-     * @param $user
-     * @param $currency
+     * @param  string  $id
+     * @param  string  $currency
      * @return JsonResponse
      */
     final public function showRateByCurrency(string $id, string $currency): JsonResponse
@@ -96,21 +111,32 @@ class UserController extends Controller
         $user = User::where('id', $id)->first();
         $usersCurrency = Currency::where('id', $user->rate->currency_id)->first()->currency;
 
-        /**
-         * @todo : use a Resource here to format the json output
-         */
-        return response()->json(
-            [
-                'User' => [
-                    'first_name' => $user->first_name,
-                    'last_name' => $user->last_name,
-                    'contact_number' => $user->contact_number,
-                    'Rate' => [
-                        'currency' => $currency,
-                        'hourly_rate' => $this->converter->convertHourlyRateToCurrency($user->rate->hourly, $usersCurrency, $currency),
+        try {
+            $convertedHourlyRate = $this->currencyConversionService->convertHourlyRateToCurrency(
+                $user->rate->hourly,
+                $usersCurrency,
+                $currency
+            );
+
+            return response()->json(
+                [
+                    'User' => [
+                        'first_name' => $user->first_name,
+                        'last_name' => $user->last_name,
+                        'contact_number' => $user->contact_number,
+                        'Rate' => [
+                            'currency' => $currency,
+                            'hourly_rate' => $convertedHourlyRate
+                        ]
                     ]
                 ]
-            ]
-        );
+            );
+
+        } catch (\Exception $e) {
+             $this->logger->error([ 'Server error with external api',
+                 'Error ' => 'Api connection error',
+                 'Message' => $e->getMesssage()
+             ]);
+        }
     }
 }
